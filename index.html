@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="stylesheets/stylesheets.css">
+    <style>
+    html, body {
+      padding:0;
+      margin: 0;
+      font: 10px sans-serif;
+      background-color: #efd8ba;
+    }
+    h1, h2, h3, h4, h5 {
+      color:#544470;
+    }
+    .simple-list {
+      list-style: none;
+      padding:0;
+      margin:0;
+    }
+    .simple-list li {
+      font-size: 12px;
+      line-height: 1.5em;
+      margin-bottom: 8px;
+    }
+    .simple-list li img {
+      border-radius: 25px;
+      vertical-align: middle;
+      margin-right:10px;
+      height:40px;
+      width:40px;
+    }
+
+    #yammer-login {
+      float:right;
+    }
+    #header {
+      overflow: hidden;
+      padding: 10px;
+      background-color: #eee;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+
+    #current-user, #current-user a {
+      color: #efefef;
+    }
+    #current-user img {
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+
+    #users, #groups {
+      width:20%;
+      float:left;
+      border:1px dashed #eee;
+    }
+
+
+
+    /* timeline */
+    #status {
+      font-weight: bold;
+      font-size: 20px;
+      color:#EF746F;
+    }
+    #logo {
+      position: fixed;
+      bottom:10px;
+      left: 10px;
+      width:48px;
+      height:48px;
+      background: url('/media/gild-shield-48x48.png') no-repeat 0 0;
+    }
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #efc4ce;
+      shape-rendering: crispEdges;
+      stroke-width: 2.5px;
+    }
+
+    .line {
+      fill: none;
+      stroke: steelblue;
+      stroke-width: 1.5px;
+    }
+    g.tick text {
+      fill:#544470;
+    }
+    #key {
+      list-style: none;
+      margin:0;
+      padding: 0;
+    }
+    #key li {
+      line-height: 2em;
+    }
+    #key li a {
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .entry rect {
+      stroke: #ccc;
+    }
+    .entry text {
+      fill:#544470;
+    }
+    .entry .date {
+      font-weight: bold;
+    }
+    /* colors */
+    .product rect, .product-key {
+      background-color: #E6AC27;
+      stroke: #E6AC27;
+    }
+    .customer-success rect, .cs .card, .customer-success-key {
+      background-color: #BF4D28;
+      stroke: #BF4D28;
+    }
+    .marketing rect, .marketing-key {
+      background-color: #80BCA3;
+      stroke: #80BCA3;
+    }
+    .sales rect, .sales-key {
+      background-color: #655643;
+      stroke: #655643;
+    }
+    div.card strong {
+      display:block;
+      padding:3px;
+    }
+    div.card img {
+      display:block-inline;
+      height:40px;
+      width:40px;
+      padding:4px;
+      border-radius: 25px;
+    }
+    div.card strong {
+    display:block-inline;
+     padding:2px;
+    }
+    svg, svg g {
+      overflow: visible;
+    }
+    svg circle {
+      fill: #333;
+    }
+
+    nav {
+      border-bottom: 1px solid #544470;
+      min-height: 49px;
+    }
+    aside {
+      border-left: 1px solid #E8A9B8;
+      min-height: 700px;
+    }
+    section article {
+      overflow: auto;
+      background-color: #FFF;
+      background:#FFF url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAK0lEQVQYV2NkQANnzpyRNDExeY4szEhnRSA3oFuJzifoJpAhBBWBTKWeIgCLaCUERGlnoAAAAABJRU5ErkJggg==);
+      vertical-align: top;
+      height: 700px;
+    }
+    .padding {
+      padding:10px;
+    }
+    #graphs {
+      margin:0;
+      padding: 0;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #E8A9B8;
+    }
+    #graphs li {
+      display:inline;
+      margin-right:5px;
+    }
+  </style>
+
+    <script type="text/javascript" data-app-id="YsFN1deLBAVIJo8jteaA" src="https://assets.yammer.com/platform/yam.js"></script>
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js'></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/0.7.2/mustache.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  </head>
+
+  <body>
+    <nav>
+      <span id="yammer-login"></span>
+      <div id="current-user"> </div>
+    </nav>
+    <div id="sub-nav"></div>
+    <section>
+
+      <article>
+        <div id="status">Initializing application...</div>
+        <div id="world"></div>
+      </article>
+
+      <aside>
+        <div class="padding">
+          <h2>Visualize:</h2>
+          <ul id="graphs">
+            <li><button>Start-date</button></li>
+            <li><button>Birthday</button></li>
+          </ul>
+          <h2>Filter by Department:</h2>
+          <ul id="key">
+            <li><button>All</button></li>
+          </ul>
+        </div>
+      </aside>
+
+    </section>
+
+
+<!-- 
+    <div id="wrapper">
+      <ul id="users" class="simple-list"></ul>
+      <ul id="groups" class="simple-list"></ul>
+    </div>
+
+ -->
+
+
+    <script type="text/x-template" id="current-user-template">
+      <img src="{{ mugshot_url }}">
+      <span class="name"><a href="{{ web_url }}">{{ full_name }}</a></span>
+      <span class="network">{{ network_name }}</span>
+    </script>
+
+
+    <script>
+      $('head').append($("<script>").prop('src', ('/app.js?_bust=' + Math.random()) ));
+    </script>
+  </body>
+</html>

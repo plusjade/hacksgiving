@@ -1,0 +1,73 @@
+* {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box; }
+
+body {
+  margin: 0px;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+
+nav {
+  display: block;
+  float: left;
+  margin-right: 2.35765%;
+  width: 100%;
+  background-color: #9c8cb9; }
+  nav:last-child {
+    margin-right: 0; }
+
+section {
+  *zoom: 1;
+  display: table;
+  width: 100%;
+  table-layout: fixed; }
+  section:before, section:after {
+    content: " ";
+    display: table; }
+  section:after {
+    clear: both; }
+  section aside {
+    display: table-cell;
+    padding-right: 1.57177%;
+    width: 24.80353%;
+    background-color: #efc4ce; }
+  section article {
+    display: table-cell;
+    padding-right: 2.09569%;
+    width: 76.50628%;
+    background-color: #f2f2f2; }
+
+button {
+  border: 1px solid #076fe4;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 0 #8ebcf1;
+  color: white;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: bold;
+  background-color: #4294f0;
+  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #4294f0), color-stop(100%, #0776f3));
+  background-image: -webkit-linear-gradient(#4294f0, #0776f3);
+  background-image: linear-gradient(#4294f0, #0776f3);
+  padding: 7px 18px;
+  text-decoration: none;
+  text-shadow: 0 1px 0 #0065d6;
+  background-clip: padding-box;
+  display: inline-block;
+  vertical-align: baseline;
+  zoom: 1;
+  *display: inline;
+  *vertical-align: auto; }
+  button:hover:not(:disabled) {
+    box-shadow: inset 0 1px 0 0 #60a2ec;
+    cursor: pointer;
+    background-color: #2f87ea;
+    background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #2f87ea), color-stop(100%, #086fe3));
+    background-image: -webkit-linear-gradient(#2f87ea, #086fe3);
+    background-image: linear-gradient(#2f87ea, #086fe3); }
+  button:active:not(:disabled) {
+    border: 1px solid #076fe4;
+    box-shadow: inset 0 0 8px 4px #0868d3, inset 0 0 8px 4px #0868d3, 0 1px 1px 0 #eeeeee; }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed; }
