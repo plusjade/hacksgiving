@@ -1,102 +1,66 @@
+var Timeline = {
+    // The payload represents the full dataset.
+    // Views and filters will filter the global dataset.
+    initialize : function(payload) {
+        Timeline.render = render;
 
-var D3 = {
-    derp : function(payload) {
-          // d3
-          var margin = {top: 30, right: 20, bottom: 0, left: 30},
-              cardWidth = 100,
-              width = 2000 - margin.left - margin.right,
-              height = 700 - margin.top - margin.bottom;
+        // Update data relative to render modules.
+        payload.forEach(function(d) {
+            for(key in Timeline.Renderers) {
+                Timeline.Renderers[key].process(d);
+            }
+        });
+        this.payload = payload;
 
-          var svg = d3.select("#world").append("svg")
-              .attr("width", width + margin.left + margin.right)
-              .attr("height", height + margin.top + margin.bottom)
+        var margin = {top: 30, right: 20, bottom: 0, left: 30},
+            cardWidth = 100,
+            width = 2000 - margin.left - margin.right,
+            height = 700 - margin.top - margin.bottom;
+
+        var svg = d3.select("#world").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
             .append("g")
-              .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-            var parseDate = d3.time.format("%Y/%m/%d").parse;
-            var parseBirthday = d3.time.format("%m/%d").parse;
-
-            // prep data
-            payload.forEach(function(d) {
-              d._date = d.date;
-              d.date = parseDate(d.date);
-              d.birthday = parseBirthday(d.birthday);
-              validateData(d);
-            });
-
-            var x = d3.time.scale();
-            x.domain(d3.extent(payload, function(d) { return d.date }));
-            var maxExtent = x.domain()[1];
-
-            var departments = _.map(payload, function(d) {
-              return d.department || 'none';
-            })
-            departments = _.uniq(departments);
-
-            var content = '';
-            _.each(departments, function(d){
-              content += '<li><button>'+d+'</button></li>';
-            })
-            $("#key").append(content);
-
-          $('#key').on('click', 'button', function(e){
-              e.preventDefault();
-              var filter = $(this).text();
-              if(filter === "All") {
-                  timeline(payload, D3._timeline_type);
-              } else {
-                  var data = _.where(payload, { department: filter });
-                  timeline(data, D3._timeline_type);
-              }
-          })
+        // define a maxExtent for when filters return single result sets.
+        var x = d3.time.scale();
+        x.domain(d3.extent(payload, function(d) { return d.date }));
+        var maxExtent = x.domain()[1];
 
 
-          timeline(payload);
+        render(payload);
 
 
+        function render(data, type) {
+            var Renderer = (type === 'birthday') ? Timeline.Renderers.birthday : Timeline.Renderers.date;
 
-          function timeline(data, type) {
-
-            var formatDate = (type === 'birthday') ? d3.time.format("%d %b") : d3.time.format("%d %b %Y");
             var color = d3.scale.category20();
-
-            var y = d3.scale.linear()
-                .range([0, height]);
+            var y = d3.scale.linear().range([0, height]);
             y.domain([0,10]);
             var yAxis = d3.svg.axis().scale(y).orient("left");
-
-
             var x = d3.time.scale();
-
             if(data.length === 1) {
-                if(type === 'birthday')
-                    x.domain([data[0].birthday]);
-                else
-                    x.domain([data[0].date, maxExtent]);
+                x.domain([Renderer.attribute(data[0]), maxExtent]);
             }
             else {
-                x.domain(d3.extent(data, function(d) { return (type === 'birthday') ? d.birthday : d.date }));
+                x.domain(d3.extent(data, function(d) { return Renderer.attribute(d) }));
             }
 
-
             x.range([0, width-cardWidth]); // account for the last card's width
-            var tickFormat = (type === "birthday") ? d3.time.format("%b") : d3.time.format("%b %Y")
             var xAxis = d3.svg.axis()
                 .scale(x)
-                .tickFormat(tickFormat)
+                .tickFormat(Renderer.tickFormat)
                 .ticks(d3.time.months)
                 .orient("top");
 
 
-            d3.select('#status').html('');
-            d3.select("#world").select("svg").transition().duration(500).attr("width", width)
+            data.sort(function(a, b){ return (Renderer.attribute(a) > Renderer.attribute(b)) ? +1 : -1 ; })
+            data.forEach(function(d, i) {
+                d._position = i+1;
+            })
 
-
-            // sort the data based on date
-            if (type === 'birthday')
-                data = data.sort(function(a, b){ return (a.birthday > b.birthday) ? +1 : -1 ; })
-            else
-                data = data.sort(function(a, b){ return (a.date > b.date) ? +1 : -1 ; })
+            var total = data.length;
 
             // break data into vertical chunks for display.
             var i = 1;
@@ -106,28 +70,24 @@ var D3 = {
               ++i;
             });
 
-
+            d3.select('#status').html('');
+            d3.select("#world").select("svg").transition().duration(500).attr("width", width);
             svg.selectAll('g.axis').remove();
-            svg.append("g")
-                .attr("class", "x axis")
-                .call(xAxis);
+            svg.append("g").attr("class", "x axis").call(xAxis);
 
-            // date entries
             var entries = svg.selectAll('g.entry').data(data, function(d) { return d.id });
+
+            // ENTER
             var entriesEnter = entries.enter().append("svg:g")
                   .attr('class', function(d) { return "entry "+ (d.department ? d.department.toLowerCase() : 'none') })
                   .attr("transform", function(d) { 
-                    if(type === "birthday")
-                        return "translate(" + x(d.birthday) + "," + y(d.y) + ")";
-                    else
-                        return "translate(" + x(d.date) + "," + y(d.y) + ")";
+                        return "translate(" + x(Renderer.attribute(d)) + "," + y(d.y) + ")";
                   })
 
             entriesEnter.append("svg:text")
                 .attr('class', 'date')
                 .attr('x', 30)
                 .attr('y', 15)
-                .text(function(d){ return formatDate((type === "birthday") ? d.birthday : d.date) })
             entriesEnter.append('rect')
                 .attr('x', -20)
                 .attr('width', 42)
@@ -144,35 +104,82 @@ var D3 = {
             entriesEnter.append("svg:text")
                 .attr('x', 30)
                 .attr('y', 29)
+                .attr('class', 'name')
+
+
+            // ENTER + UPDATE
+            entries.selectAll("text.name")
                 .text(function(d){ return d.full_name })
+            entries.selectAll("text.date")
+                .text(function(d){ return Renderer.formatDate( Renderer.attribute(d) ) })
 
-
+            // UPDATE
             var entriesUpdate = entries.transition()
                 .duration(1000)
                 .attr("transform", function(d) { 
-                    if(type === "birthday")
-                        return "translate(" + x(d.birthday) + "," + y(d.y) + ")";
-                    else
-                        return "translate(" + x(d.date) + "," + y(d.y) + ")";
+                    return "translate(" + x( Renderer.attribute(d) ) + "," + y(d.y) + ")";
                 })
 
 
+            // EXIT
             var entriesExit = entries.exit().transition()
                 .style("fill-opacity", 0)
                 .remove();
-          }
+        }
+    }
+    ,
+    show : function(type) {
+        Timeline._timeline_type = type.toLowerCase();
+        this.render(this.payload, this._timeline_type);
+    }
+    ,
+    filterBy : function(attribute, filter) {
+        if(filter === "All") {
+            this.render(this.payload, this._timeline_type);
+        }
+        else {
+            var criteria = {}
+            criteria[attribute] = filter
+            var data = _.where(this.payload, criteria);
 
-          D3.timeline = timeline;
-
-          function validateData(d) {
-            if(d.date.getFullYear() < 2010) {
-              var message = "Invalid Year Format: '" + d._date + "' Please use MM/DD/YYYY. On item: " + d.full_name;
-              d3.select('#status').html(message);
-              throw new Error(message);
+            this.render(data, this._timeline_type);
+        }
+    }
+    ,
+    Renderers : {
+        "birthday" : {
+            formatDate : d3.time.format("%d %b")
+            ,
+            tickFormat : d3.time.format("%b")
+            ,
+            attribute  : function(d) {
+                return d.birthday;
             }
-
-            return true;
-          }
+            ,
+            parseAttribute : d3.time.format("%m/%d").parse
+            ,
+            process : function(d) {
+                d._birthday = d.birthday;
+                d.birthday = this.parseAttribute(d.birthday);
+            }
+        }
+        ,
+        "date" : {
+            formatDate : d3.time.format("%d %b %Y")
+            ,
+            tickFormat : d3.time.format("%b %Y")
+            ,
+            attribute  : function(d) {
+                return d.date;
+            }
+            ,
+            parseAttribute : d3.time.format("%Y/%m/%d").parse
+            ,
+            process : function(d) {
+                d._date = d.date;
+                d.date = this.parseAttribute(d.date);
+            }
+        }
     }
 }
 
@@ -182,6 +189,37 @@ var User = Backbone.Model.extend({
 })
 var Users = Backbone.Collection.extend({
     model: User
+    ,
+    timelinePayload : function() {
+        var data =  this.map(function(d) {
+            var month = (Math.floor(Math.random() * 12) + 1) + '';
+            var day = (Math.floor(Math.random() * 28) + 1) + '';
+            if(month.length === 1) month = "0" + month;
+            if(day.length === 1) day = "0" + day;
+
+            return {
+                id: d.id,
+                date: d.get('activated_at').split(' ')[0],
+                full_name: d.get('full_name'),
+                department: d.get('department'),
+                mugshot_url: d.get('mugshot_url'),
+                birthday: (month + "/" + day),
+                web_url: d.get('web_url')
+            }
+        })
+        return data;
+    }
+    ,
+    validateData : function(d) {
+      if(d.date.getFullYear() < 2010) {
+        var message = "Invalid Year Format: '" + d._date + "' Please use MM/DD/YYYY. On item: " + d.full_name;
+        d3.select('#status').html(message);
+        throw new Error(message);
+      }
+
+      return true;
+    }
+
 })
 var Group = Backbone.Model.extend({
 
@@ -190,101 +228,112 @@ var Groups = Backbone.Collection.extend({
     model: Group
 })
 
-
-
-var App = {
-    start : function() {
-        // TODO: load from localStorage
-        if(App.session) { 
-            console.log("session exists!");
-            App.render();
-        }
-        else {
-            yam.getLoginStatus(function(response) {
-                if (response.authResponse) {
-                    App.session = response;
-                    App.render();
-                }
-                else {
-                    yam.login(function (response) {
-                        if (response.authResponse) {
-                            console.dir(response);
-                            App.session = response;
-                            App.render();
-                        }
-                    });
-                }
-            });
-        }
+var CurrentUserView = Backbone.View.extend({
+    model : User
+    ,
+    el : "#current-user"
+    ,
+    initialize : function() {
+        this.template = $("#current-user-template").html();
+        this.render();
     }
     ,
-    // render the UI
     render : function() {
-        // current User
-        var currentUserTemplate = $("#current-user-template").html();
-        var $userWrapper = $("#current-user");
-        var content = Mustache.render(currentUserTemplate, App.session.user);
-        $userWrapper.append(content);
+        // TODO: find out why this.model is not a backbone model
+        var content = Mustache.render(this.template, this.model);
+        this.$el.append(content);
+    }
+})
+
+var UsersView = Backbone.View.extend({
+    collection : Users
+    ,
+    el : '#users'
+    ,
+    initialize : function() {
+        this.template = '{{# users }}<li><img src="{{ mugshot_url }}"><span>{{ full_name }}</span></li>{{/ users }}';
+    }
+    ,
+    render : function() {
+        var content = Mustache.render(this.template, { users : this.collection });
+        this.$el.append(content);
+    }
+})
+
+var GroupsView = Backbone.View.extend({
+    initialize : function() {
+        // // List groups
+        // App.groups().done(function(data) {
+        //     console.log("list groups");
+        //     Data.groups = new Groups(data);
+        //     Data.groups.each(function(group) {
+        //         _.each(group.get('users'), function(user) {
+        //             var u = Data.users.get(user.id);
+        //             if(u) {
+        //                 if (u.groups) u.groups.push(group);
+        //                 else u.groups = [group];
+        //             }
+        //         })
+
+        //     })
+        //     // var template = '{{# groups }}<li><img src="{{ mugshot_url }}"><span>{{ name }}</span></li>{{/ groups }}';
+        //     // var content = Mustache.render(template, { groups : data });
+        //     // var $groups = $("#groups");
+        //     // $groups.append(content);
+        // });
+    }
+})
+
+var App = {
+
+    start : function() {
+        // apparently this function will wait on yam.connect so
+        // will fire at any point the user uses the connect button.
+        yam.getLoginStatus(
+          function(response) {
+            if (response.authResponse) {
+                App.render(response);
+            }
+          }
+        );
+
+        yam.connect.loginButton('#yammer-login', function (resp) {
+            if (resp.authResponse) { 
+                document.getElementById('yammer-login').innerHTML = '';
+            } 
+        });
+    }
+    ,
+
+    render : function(session) {
+        new CurrentUserView({ model: session.user });
 
         // list users
         App.users().done(function(users) {
+
             Data.users = new Users(users);
-            var template = '{{# users }}<li><img src="{{ mugshot_url }}"><span>{{ full_name }}</span></li>{{/ users }}';
-            var content = Mustache.render(template, { users : users });
-            var $users = $("#users");
-            $users.append(content);
+            var payload = Data.users.timelinePayload();
 
             // start timeline;
-            var payload = Data.users.map(function(d){
-                var month = (Math.floor(Math.random() * 12) + 1) + '';
-                var day = (Math.floor(Math.random() * 28) + 1) + '';
-                if(month.length === 1) month = "0" + month;
-                if(day.length === 1) day = "0" + day;
+            Timeline.initialize(payload);
 
-                return {
-                    id: d.id,
-                    date: d.get('activated_at').split(' ')[0],
-                    full_name: d.get('full_name'),
-                    department: d.get('department'),
-                    mugshot_url: d.get('mugshot_url'),
-                    birthday: (month + "/" + day),
-                    web_url: d.get('web_url')
-                }
-            })
-
-            D3.derp(payload);
-            $("#graphs").find('button').click(function(){
+            $("#graphs").find('button').click(function() {
                 var text = $(this).text();
-                if(text === "Birthday") {
-                    D3._timeline_type = 'birthday';
-                    D3.timeline(payload, "birthday");
-                }
-                else {
-                    D3._timeline_type = '';
-                    D3.timeline(payload);
-                }
+                Timeline.show(text);
             })
 
-
-            // // List groups
-            // App.groups().done(function(data) {
-            //     console.log("list groups");
-            //     Data.groups = new Groups(data);
-            //     Data.groups.each(function(group) {
-            //         _.each(group.get('users'), function(user) {
-            //             var u = Data.users.get(user.id);
-            //             if(u) {
-            //                 if (u.groups) u.groups.push(group);
-            //                 else u.groups = [group];
-            //             }
-            //         })
-
-            //     })
-            //     // var template = '{{# groups }}<li><img src="{{ mugshot_url }}"><span>{{ name }}</span></li>{{/ groups }}';
-            //     // var content = Mustache.render(template, { groups : data });
-            //     // var $groups = $("#groups");
-            //     // $groups.append(content);
-            // });
+            // departments
+            var departments = _.map(payload, function(d) { return d.department || 'none'; })
+            departments = _.uniq(departments);
+            var content = '';
+            _.each(departments, function(d){ content += '<li><button>'+d+'</button></li>'; })
+            $("#key")
+                .append(content)
+                .on('click', 'button', function(e) {
+                    e.preventDefault();
+                    var filter = $(this).text();
+                    Timeline.filterBy('department', filter);
+                })
         });
     }
     ,
@@ -321,6 +370,7 @@ var App = {
         return dfd.promise();
     }
     ,
+
     groups : function() {
         var self = this;
         var cacheName = 'global.groups',
@@ -369,6 +419,7 @@ var App = {
         return dfd.promise();
     }
     ,
+
     group_users : function(group) {
         var dfd = $.Deferred();
             yam.request({
@@ -389,11 +440,5 @@ var App = {
     }
 }
 
-
-yam.connect.loginButton('#yammer-login', function (resp) {
-    if (resp.authResponse) { 
-        document.getElementById('yammer-login').innerHTML = 'Welcome to Yammer!';
-    } 
-});
 
 App.start();
