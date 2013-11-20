@@ -84,6 +84,13 @@ var Timeline = {
                         return "translate(" + x(Renderer.attribute(d)) + "," + y(d.y) + ")";
                   })
 
+            entriesEnter
+                .on('mouseover', function(d) {
+                    d3.select(this).select('g.tooltip').style('display', 'block')
+                })
+                .on('mouseout', function(d) {
+                    d3.select(this).select('g.tooltip').style('display', 'none')
+                })
             entriesEnter.append("svg:text")
                 .attr('class', 'date')
                 .attr('x', 30)
@@ -105,6 +112,23 @@ var Timeline = {
                 .attr('x', 30)
                 .attr('y', 29)
                 .attr('class', 'name')
+
+            var tooltip = entriesEnter.append("svg:g")
+                .attr('class', 'tooltip')
+                .attr('transform', 'translate(30,-35)')
+                .style("display", "none")
+            tooltip.append("rect")
+                .attr('width', 100)
+                .attr('height', 30)
+                .attr('class', 'tooltip-bg')
+                .style("fill", "#eee")
+                .style("stroke", "#ccc")
+            tooltip.append("svg:text")
+                .attr('x', 10)
+                .attr('y', 17)
+                .attr('class', 'tooltip')
+                .text(function(d){ return "Hire #"+ d._position + " of " + total })
+                .style("fill", "#333")
 
 
             // ENTER + UPDATE
