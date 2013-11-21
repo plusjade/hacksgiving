@@ -23,6 +23,20 @@ var Timeline = {
             .append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+        //http://stackoverflow.com/a/7432400/101940
+        var gdefs = svg.append('defs');
+        gdefs.append('rect')
+            .attr("id", 'circle-rect')
+            .attr("x", '-19')
+            .attr("y", '1')
+            .attr("width", 42)
+            .attr("height", 42)
+            .attr("rx", 42)
+        gdefs.append('clipPath')
+            .attr("id", 'circle-img')
+            .append('use')
+                .attr('xlink:href', "#circle-rect")
+
         // define a maxExtent for when filters return single result sets.
         var x = d3.time.scale();
         x.domain(d3.extent(payload, function(d) { return d.date }));
@@ -70,7 +84,6 @@ var Timeline = {
               ++i;
             });
 
-            d3.select('#status').html('');
             d3.select("#world").select("svg").transition().duration(500).attr("width", width);
             svg.selectAll('g.axis').remove();
             svg.append("g").attr("class", "x axis").call(xAxis);
@@ -94,19 +107,16 @@ var Timeline = {
             entriesEnter.append("svg:text")
                 .attr('class', 'date')
                 .attr('x', 30)
-                .attr('y', 15)
-            entriesEnter.append('rect')
-                .attr('x', -20)
-                .attr('width', 42)
-                .attr('height', 42)
-                .attr('fill', 'transparent')
-                .attr('stroke-width', '5')
+                .attr('y', 15);
+            entriesEnter.append('use')
+                .attr('xlink:href', '#circle-rect')
             entriesEnter.append("svg:image")
                 .attr('x', -19)
                 .attr('y', 1)
-                .attr('width', 40)
-                .attr('height', 40)
+                .attr('width', 42)
+                .attr('height', 42)
                 .attr('class', 'image')
+                .attr('clip-path', 'url(#circle-img)')
                 .attr("xlink:href", function(d) { return d.mugshot_url })
             entriesEnter.append("svg:text")
                 .attr('x', 30)
@@ -486,6 +496,7 @@ var App = {
 
         // list users
         App.users().done(function(users) {
+            d3.select('#status').html('');
             Data.users = new Users(users);
             var payload = Data.users.timelinePayload();
 
