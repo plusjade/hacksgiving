@@ -1,7 +1,7 @@
 var Timeline = {
     // The payload represents the full dataset.
     // Views and filters will filter the global dataset.
-    initialize : function(payload) {
+    initialize : function(payload, canvas) {
         Timeline.render = render;
 
         // Update data relative to render modules.
@@ -17,7 +17,7 @@ var Timeline = {
             width = 2000 - margin.left - margin.right,
             height = 700 - margin.top - margin.bottom;
 
-        var svg = d3.select("#world").append("svg")
+        var svg = canvas
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
@@ -207,6 +207,158 @@ var Timeline = {
     }
 }
 
+var BubbleChart = (function() {
+    function BubbleChart(data, Canvas) {
+        var sectionWidth = 100;
+        var max_amount;
+        this.data = data;
+        this.width = 1000;
+        this.height = 600;
+        this.padding = 100;
+        this.segmentWidth = 200;
+        this.center = {
+          x: this.width / 2,
+          y: this.height / 2
+        };
+        this.damper = 0.1;
+        this.nodes = [];
+        this.fill_color = d3.scale.ordinal().domain(["low", "medium", "high"]).range(["#6B238E", "#8A2BE2", "#BF5FFF"]);
+
+        max_amount = d3.max(this.data, function(d) { return parseInt(d.total_amount) });
+        this.radius_scale = d3.scale.pow().exponent(0.5).domain([0, max_amount]).range([2, 85]);
+
+        var _this = this;
+
+        // nodes
+        this.data.forEach(function(d) {
+            var node;
+            node = {
+            id: d.name + Math.random(),
+            radius: 16,
+            department: d.department,
+            x: Math.random() * 900,
+            y: Math.random() * 800
+            };
+            return _this.nodes.push(node);
+        });
+        this.nodes.sort(function(a, b) { return b.value - a.value; });
+
+
+        this.canvas = Canvas.attr("height", this.height);
+
+        // DATA
+        this.circles = this.canvas.selectAll("circle").data(this.nodes, function(d) { return d.id });
+
+        // ENTER
+        this.circles.enter()
+            .append("circle")
+            .attr("r", 0)
+            .attr("fill", function(d) {
+                return _this.fill_color(d.group);
+            })
+            .attr("stroke-width", 2).attr("stroke", function(d) {
+                return d3.rgb(_this.fill_color(d.group)).darker();
+            })
+            .attr("id", function(d) {
+                return "bubble_" + d.id;
+            })
+
+        // UPDATE
+        this.circles
+            .transition().duration(2000)
+            .attr("r", function(d) { return d.radius });
+
+        this.force = d3.layout.force()
+            .nodes(this.nodes)
+            .size([this.width, this.height])
+    }
+
+
+    BubbleChart.prototype.assemble = function() {
+        var _this = this;
+
+        this.canvas.selectAll(".heading").remove();
+
+        _this.canvas.transition().duration(500)
+            .attr("width", this.width)
+
+        this.force
+            .gravity(0)
+            .charge(this.charge).friction(0.9)
+            .on("tick", function(e) {
+                _this.circles.each(function(d) {
+                d.x = d.x + (_this.center.x - d.x) * (_this.damper + 0.02) * e.alpha;
+                d.y = d.y + (_this.center.y - d.y) * (_this.damper + 0.02) * e.alpha;
+            })
+            .attr("cx", function(d) { return d.x })
+            .attr("cy", function(d) { return d.y });
+        })
+        .start()
+    };
+
+
+    // Disperse into clusters grouped by <key>
+    BubbleChart.prototype.disperse = function(key) {
+        var _this = this;
+        var keys = _.uniq(_.pluck(_this.data, key));
+        var newWidth = keys.length*this.segmentWidth;
+        var mid = this.segmentWidth/2;
+
+        // evenly distribute the cluster points
+        var cluster_points = {};
+        keys.forEach(function(value, i) {
+            cluster_points[value] = {
+                x: (_this.segmentWidth*i + mid),
+                y: _this.height/2
+            };
+        })
+
+        // UPDATE viewport
+        _this.canvas.transition().duration(500)
+            .attr("width", newWidth)
+
+        // UPDATE labels
+        var nodes = _this.canvas.selectAll(".heading").data(keys);
+        nodes.enter().append("text")
+            .attr("class", "heading")
+            .attr("x", function(d) { return cluster_points[d].x })
+            .attr("y", 40)
+            .attr("text-anchor", "middle")
+            .text(function(d) { return d });
+
+        function tick(e) {
+            _this.circles.each(function(d) {
+                var point = cluster_points[d[key]];
+                d.x = d.x + (point.x - d.x) * (_this.damper + 0.02) * e.alpha * 1.1;
+                d.y = d.y + (point.y - d.y) * (_this.damper + 0.02) * e.alpha * 1.1;
+            })
+            .attr("cx", function(d) { return d.x })
+            .attr("cy", function(d) { return d.y });
+        }
+
+        // UPDATE nodes
+        // note gravity needs to be 0 so the nodes can expand from the center without
+        // being constained (feeling pulled in) by the "center"
+        // This allows the circles to be properly positioned based on a coord calculations.
+        // https://github.com/mbostock/d3/wiki/Force-Layout#wiki-gravity
+        this.force
+            .size([newWidth, this.height])
+            .gravity(0)
+            .charge(this.charge)
+            .friction(0.9)
+            .on("tick", tick)
+            .start()
+    };
+
+    BubbleChart.prototype.charge = function(d) {
+        return -Math.pow(d.radius, 2.0) / 8;
+    };
+
+
+    return BubbleChart;
+
+})();
+
 var Data = {};
 var User = Backbone.Model.extend({
 
@@ -334,19 +486,35 @@ var App = {
 
         // list users
         App.users().done(function(users) {
-
             Data.users = new Users(users);
             var payload = Data.users.timelinePayload();
 
-            // start timeline;
-            Timeline.initialize(payload);
+            var Canvas = d3.select("#world").append("svg")
 
+            var chart = new BubbleChart(users, Canvas);
+            chart.assemble();
+
+            var initTimeline = _.once(function() {
+                Timeline.initialize(payload, Canvas);
+            });
+
+            // Visualizations
             $("#graphs").find('button').click(function() {
                 var text = $(this).text();
-                Timeline.show(text);
+
+                if (text === 'People') {
+                    chart.assemble();
+                }
+                else if(text === 'Departments') {
+                  chart.disperse("department");
+                }
+                else {
+                    initTimeline();
+                    Timeline.show(text);
+                }
             })
 
-            // departments
+            // Filters (departments)
             var departments = _.map(payload, function(d) { return d.department || 'none'; })
             departments = _.uniq(departments);
             var content = '';
@@ -358,6 +526,7 @@ var App = {
                     var filter = $(this).text();
                     Timeline.filterBy('department', filter);
                 })
+
         });
     }
     ,

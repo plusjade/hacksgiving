@@ -145,9 +145,6 @@
     svg, svg g {
       overflow: visible;
     }
-    svg circle {
-      fill: #333;
-    }
 
     nav {
       border-bottom: 1px solid #544470;
@@ -173,10 +170,15 @@
       margin-bottom: 10px;
       padding-bottom: 10px;
       border-bottom: 1px solid #E8A9B8;
+      list-style: none;
     }
     #graphs li {
-      display:inline;
-      margin-right:5px;
+      line-height: 1.5em;
+    }
+
+    .heading {
+      font-size: 18px;
+      fill: #aaa;
     }
   </style>
 
@@ -207,7 +209,10 @@
           <ul id="graphs">
             <li><button>Start-date</button></li>
             <li><button>Birthday</button></li>
+            <li><button>People</button></li>
+            <li><button>Departments</button></li>
           </ul>
+
           <h2>Filter by Department:</h2>
           <ul id="key">
             <li><button>All</button></li>
