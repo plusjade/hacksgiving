@@ -23,20 +23,6 @@ var Timeline = {
             .append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        //http://stackoverflow.com/a/7432400/101940
-        var gdefs = svg.append('defs');
-        gdefs.append('rect')
-            .attr("id", 'circle-rect')
-            .attr("x", '-19')
-            .attr("y", '1')
-            .attr("width", 42)
-            .attr("height", 42)
-            .attr("rx", 42)
-        gdefs.append('clipPath')
-            .attr("id", 'circle-img')
-            .append('use')
-                .attr('xlink:href', "#circle-rect")
-
         // define a maxExtent for when filters return single result sets.
         var x = d3.time.scale();
         x.domain(d3.extent(payload, function(d) { return d.date }));
@@ -247,35 +233,27 @@ var BubbleChart = (function() {
         });
         this.data.sort(function(a, b) { return b.value - a.value; });
 
-
         this.canvas = Canvas.attr("width", this.width);
 
         // DATA
-        this.circles = this.canvas.selectAll("circle").data(this.data, function(d) { return d.id });
+        this.circles = this.canvas.selectAll("g").data(this.data, function(d) { return d.id });
 
         // ENTER
         var circlesEnter = this.circles.enter();
 
-        var defs = circlesEnter.append("defs")
-        defs.append("filter")
-            .attr("id", function(d) { return "img-" + d.id })
-            .append("feImage")
-                .attr("xlink:href", function(d) { return d.mugshot_url })
+        var group = circlesEnter.append("svg:g")
+                        .attr('class', function(d) { return "entry "+ (d.department ? d.department.toLowerCase() : 'none') })
+        group.append('use')
+            .attr('xlink:href', '#circle-rect')
+        group.append("svg:image")
+            .attr('x', -19)
+            .attr('y', 1)
+            .attr('width', 42)
+            .attr('height', 42)
+            .attr('class', 'image')
+            .attr('clip-path', 'url(#circle-img)')
+            .attr("xlink:href", function(d) { return d.mugshot_url })
 
-        circlesEnter.append("circle")
-            .attr("r", 0)
-            .attr("filter", function(d){ return "url(#img-" + d.id + ')' })
-            .attr("fill", function(d) {
-                return _this.fill_color(d.group);
-            })
-            .attr("stroke-width", 2).attr("stroke", function(d) {
-                return d3.rgb(_this.fill_color(d.group)).darker();
-            })
-
-        // UPDATE
-        this.circles
-            .transition().duration(2000)
-            .attr("r", function(d) { return d.radius });
 
         this.force = d3.layout.force()
             .nodes(this.data)
@@ -299,8 +277,7 @@ var BubbleChart = (function() {
                 d.x = d.x + (_this.center.x - d.x) * (_this.damper + 0.02) * e.alpha;
                 d.y = d.y + (_this.center.y - d.y) * (_this.damper + 0.02) * e.alpha;
             })
-            .attr("cx", function(d) { return d.x })
-            .attr("cy", function(d) { return d.y });
+            .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")" })
         })
         .start()
     };
@@ -363,8 +340,7 @@ var BubbleChart = (function() {
                 d.x = d.x + (point.x - d.x) * (_this.damper + 0.02) * e.alpha * 1.1;
                 d.y = d.y + (point.y - d.y) * (_this.damper + 0.02) * e.alpha * 1.1;
             })
-            .attr("cx", function(d) { return d.x })
-            .attr("cy", function(d) { return d.y });
+            .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")" })
         }
 
         // UPDATE nodes
@@ -522,6 +498,22 @@ var App = {
             var payload = Data.users.timelinePayload();
 
             var Canvas = d3.select("#world").append("svg")
+
+            //http://stackoverflow.com/a/7432400/101940
+            var gdefs = Canvas.append('defs');
+            gdefs.append('rect')
+                .attr("id", 'circle-rect')
+                .attr("x", '-19')
+                .attr("y", '1')
+                .attr("width", 42)
+                .attr("height", 42)
+                .attr("rx", 42)
+                .style('flll', 'transparent')
+            gdefs.append('clipPath')
+                .attr("id", 'circle-img')
+                .append('use')
+                    .attr('xlink:href', "#circle-rect")
+
 
             var chart = new BubbleChart(users, Canvas);
             chart.assemble();
