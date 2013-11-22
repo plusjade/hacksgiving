@@ -14,8 +14,8 @@ var Timeline = {
 
         var margin = {top: 30, right: 20, bottom: 0, left: 30},
             cardWidth = 100,
-            width = 2000 - margin.left - margin.right,
-            height = 700 - margin.top - margin.bottom;
+            width = 1200 - margin.left - margin.right,
+            height = 2500 - margin.top - margin.bottom;
 
         // define a maxExtent for when filters return single result sets.
         var x = d3.time.scale();
@@ -30,23 +30,25 @@ var Timeline = {
             var Renderer = (type === 'birthday') ? Timeline.Renderers.birthday : Timeline.Renderers.date;
 
             var color = d3.scale.category20();
-            var y = d3.scale.linear().range([0, height]);
-            y.domain([0,10]);
-            var yAxis = d3.svg.axis().scale(y).orient("left");
-            var x = d3.time.scale();
+
+            var x = d3.scale.linear().range([0, width]);
+            x.domain([0,10]);
+            var xAxis = d3.svg.axis().scale(x).orient("left");
+
+            var y = d3.time.scale();
             if(data.length === 1) {
-                x.domain([Renderer.attribute(data[0]), maxExtent]);
+                y.domain([Renderer.attribute(data[0]), maxExtent]);
             }
             else {
-                x.domain(d3.extent(data, function(d) { return Renderer.attribute(d) }));
+                y.domain(d3.extent(data, function(d) { return Renderer.attribute(d) }));
             }
-
-            x.range([0, width-cardWidth]); // account for the last card's width
-            var xAxis = d3.svg.axis()
-                .scale(x)
+            y.range([0, height-cardWidth]); // account for the last card's width
+            var yAxis = d3.svg.axis()
+                .scale(y)
                 .tickFormat(Renderer.tickFormat)
                 .ticks(d3.time.months)
-                .orient("top");
+                .orient("right");
+
 
             data.sort(function(a, b){ return (Renderer.attribute(a) > Renderer.attribute(b)) ? +1 : -1 ; })
             data.forEach(function(d, i) {
@@ -59,7 +61,7 @@ var Timeline = {
             var i = 1;
             data.forEach(function(d) {
               if(i > 9) i = 1;
-              d.y = (i);
+              d.x = (i);
               ++i;
             });
 
@@ -69,13 +71,16 @@ var Timeline = {
 
             canvas.selectAll('g.axis').remove();
             canvas.append("g")
-                .attr('transform', 'translate(0, 50)')
+                .attr('transform', 'translate(10, '+ margin.top +')')
                 .attr("class", "x axis _clear")
-                .call(xAxis);
+                .call(yAxis);
+            canvas.append("g")
+                .attr('transform', 'translate(1120, '+ margin.top +')')
+                .attr("class", "x axis _clear")
+                .call(yAxis.orient("left"));
 
+            // nodes DATA
             var entries = canvas.selectAll('g.entry').data(data, function(d) { return d.id });
-            var cards = entries.selectAll('g.card').data(function(d, i) { return [d]; }, function(d) { return d.id });
-
             // // ENTER
             // var entriesEnter = entries.enter().append("svg:g")
             //       .attr('class', function(d) { return "entry "+ (d.department ? d.department.toLowerCase() : 'none') })
@@ -83,17 +88,35 @@ var Timeline = {
             //             return "translate(" + x(Renderer.attribute(d)) + "," + y(d.y) + ")";
             //       })
 
+            // entries UPDATE
+            var entriesUpdate = entries.transition()
+                .duration(1000)
+                .attr("transform", function(d) { 
+                    return "translate(" + x(d.x) + "," + y(Renderer.attribute(d)) + ")";
+                })
+
+            // entries EXIT
+            var entriesExit = entries.exit().transition()
+                .style("fill-opacity", 0)
+                .remove();
+
+
+            // cards DATA
+            var cards = entries.selectAll('g.card').data(function(d, i) { return [d]; }, function(d) { return d.id });
+
             // cards ENTER 
             var cardsEnter = cards.enter().append('svg:g')
                                 .attr('class', 'card _clear')
             cardsEnter.append("svg:text")
                 .attr('class', 'date')
-                .attr('x', 30)
-                .attr('y', 15);
+                .attr('x', 0)
+                .attr('y', 60)
+                .attr("text-anchor", "middle");
             cardsEnter.append("svg:text")
-                .attr('x', 30)
-                .attr('y', 29)
                 .attr('class', 'name')
+                .attr('x', 0)
+                .attr('y', 74)
+                .attr("text-anchor", "middle");
 
             // cards ENTER + UPDATE
             cards.selectAll("text.name")
@@ -102,18 +125,6 @@ var Timeline = {
                 .text(function(d){ return Renderer.formatDate( Renderer.attribute(d) ) })
 
             cards.exit().transition()
-                .style("fill-opacity", 0)
-                .remove();
-
-            // entries UPDATE
-            var entriesUpdate = entries.transition()
-                .duration(1000)
-                .attr("transform", function(d) { 
-                    return "translate(" + x( Renderer.attribute(d) ) + "," + y(d.y) + ")";
-                })
-
-            // entries EXIT
-            var entriesExit = entries.exit().transition()
                 .style("fill-opacity", 0)
                 .remove();
         }
