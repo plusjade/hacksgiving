@@ -4,11 +4,11 @@
     <meta charset="utf-8">
     <link rel="stylesheet" href="stylesheets/stylesheets.css">
     <style>
+    /* beige efc4ce */
     html, body {
       padding:0;
       margin: 0;
       font: 10px sans-serif;
-      background-color: #efd8ba;
     }
     h1, h2, h3, h4, h5 {
       color:#544470;
@@ -56,9 +56,64 @@
       border:1px dashed #eee;
     }
 
+    .padding {
+      padding:10px;
+    }
+    #graphs {
+      margin:0;
+      padding: 0;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #E8A9B8;
+      list-style: none;
+    }
+    #graphs li {
+      line-height: 1.5em;
+    }
 
+    .heading {
+      font-size: 18px;
+      fill: #544470;
+    }
 
-    /* timeline */
+    nav {
+      border-bottom: 1px solid #544470;
+      position: fixed;
+      height:30px;
+      width: 100%;
+      background-color: #9c8cb9; 
+    }
+    #nav-filler {
+     height:30px; 
+    }
+    section {
+      display: block;
+    }
+    section article {
+      overflow: auto;
+      background-color: #FFF;
+      background:#FFF url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAK0lEQVQYV2NkQANnzpyRNDExeY4szEhnRSA3oFuJzifoJpAhBBWBTKWeIgCLaCUERGlnoAAAAABJRU5ErkJggg==);
+      vertical-align: top;
+      height: 100%;
+      width: 88%;
+    }
+    section aside {
+      position: fixed;
+      display: block;
+      top: 31px;
+      bottom:100%;
+      right: 0;
+      width: 20%;
+      background-color: #efc4ce;
+
+    }
+    aside {
+      border-left: 1px solid #E8A9B8;
+      height:100%;
+    }
+
+/* ----- timeline -----  */
+
     #status {
       font-weight: bold;
       font-size: 20px;
@@ -146,41 +201,6 @@
     svg, svg g {
       overflow: visible;
     }
-
-    nav {
-      border-bottom: 1px solid #544470;
-      min-height: 49px;
-    }
-    aside {
-      border-left: 1px solid #E8A9B8;
-      min-height: 700px;
-    }
-    section article {
-      overflow: auto;
-      background-color: #FFF;
-      background:#FFF url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAK0lEQVQYV2NkQANnzpyRNDExeY4szEhnRSA3oFuJzifoJpAhBBWBTKWeIgCLaCUERGlnoAAAAABJRU5ErkJggg==);
-      vertical-align: top;
-      height: 700px;
-    }
-    .padding {
-      padding:10px;
-    }
-    #graphs {
-      margin:0;
-      padding: 0;
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #E8A9B8;
-      list-style: none;
-    }
-    #graphs li {
-      line-height: 1.5em;
-    }
-
-    .heading {
-      font-size: 18px;
-      fill: #aaa;
-    }
   </style>
 
     <script type="text/javascript" data-app-id="YsFN1deLBAVIJo8jteaA" src="https://assets.yammer.com/platform/yam.js"></script>
@@ -196,7 +216,7 @@
       <span id="yammer-login"></span>
       <div id="current-user"> </div>
     </nav>
-    <div id="sub-nav"></div>
+    <div id="nav-filler"></div>
     <section>
 
       <article>

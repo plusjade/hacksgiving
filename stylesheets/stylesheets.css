@@ -1,4 +1,4 @@
-* {
+/** {
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box; }
@@ -36,6 +36,9 @@ section {
     padding-right: 2.09569%;
     width: 76.50628%;
     background-color: #f2f2f2; }
+
+
+*/
 
 button {
   border: 1px solid #076fe4;
