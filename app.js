@@ -17,12 +17,6 @@ var Timeline = {
             width = 2000 - margin.left - margin.right,
             height = 700 - margin.top - margin.bottom;
 
-        var svg = canvas
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
         // define a maxExtent for when filters return single result sets.
         var x = d3.time.scale();
         x.domain(d3.extent(payload, function(d) { return d.date }));
@@ -54,7 +48,6 @@ var Timeline = {
                 .ticks(d3.time.months)
                 .orient("top");
 
-
             data.sort(function(a, b){ return (Renderer.attribute(a) > Renderer.attribute(b)) ? +1 : -1 ; })
             data.forEach(function(d, i) {
                 d._position = i+1;
@@ -70,78 +63,56 @@ var Timeline = {
               ++i;
             });
 
-            d3.select("#world").select("svg").transition().duration(500).attr("width", width);
-            svg.selectAll('g.axis').remove();
-            svg.append("g").attr("class", "x axis").call(xAxis);
+            canvas.transition()
+                .attr("width", width)
+                .attr("height", height);
 
-            var entries = svg.selectAll('g.entry').data(data, function(d) { return d.id });
+            canvas.selectAll('g.axis').remove();
+            canvas.append("g")
+                .attr('transform', 'translate(0, 50)')
+                .attr("class", "x axis _clear")
+                .call(xAxis);
 
-            // ENTER
-            var entriesEnter = entries.enter().append("svg:g")
-                  .attr('class', function(d) { return "entry "+ (d.department ? d.department.toLowerCase() : 'none') })
-                  .attr("transform", function(d) { 
-                        return "translate(" + x(Renderer.attribute(d)) + "," + y(d.y) + ")";
-                  })
+            var entries = canvas.selectAll('g.entry').data(data, function(d) { return d.id });
+            var cards = entries.selectAll('g.card').data(function(d, i) { return [d]; }, function(d) { return d.id });
 
-            entriesEnter
-                .on('mouseover', function(d) {
-                    d3.select(this).select('g.tooltip').style('display', 'block')
-                })
-                .on('mouseout', function(d) {
-                    d3.select(this).select('g.tooltip').style('display', 'none')
-                })
-            entriesEnter.append("svg:text")
+            // // ENTER
+            // var entriesEnter = entries.enter().append("svg:g")
+            //       .attr('class', function(d) { return "entry "+ (d.department ? d.department.toLowerCase() : 'none') })
+            //       .attr("transform", function(d) { 
+            //             return "translate(" + x(Renderer.attribute(d)) + "," + y(d.y) + ")";
+            //       })
+
+            // cards ENTER 
+            var cardsEnter = cards.enter().append('svg:g')
+                                .attr('class', 'card _clear')
+            cardsEnter.append("svg:text")
                 .attr('class', 'date')
                 .attr('x', 30)
                 .attr('y', 15);
-            entriesEnter.append('use')
-                .attr('xlink:href', '#circle-rect')
-            entriesEnter.append("svg:image")
-                .attr('x', -19)
-                .attr('y', 1)
-                .attr('width', 42)
-                .attr('height', 42)
-                .attr('class', 'image')
-                .attr('clip-path', 'url(#circle-img)')
-                .attr("xlink:href", function(d) { return d.mugshot_url })
-            entriesEnter.append("svg:text")
+            cardsEnter.append("svg:text")
                 .attr('x', 30)
                 .attr('y', 29)
                 .attr('class', 'name')
 
-            var tooltip = entriesEnter.append("svg:g")
-                .attr('class', 'tooltip')
-                .attr('transform', 'translate(30,-35)')
-                .style("display", "none")
-            tooltip.append("rect")
-                .attr('width', 100)
-                .attr('height', 30)
-                .attr('class', 'tooltip-bg')
-                .style("fill", "#eee")
-                .style("stroke", "#ccc")
-            tooltip.append("svg:text")
-                .attr('x', 10)
-                .attr('y', 17)
-                .attr('class', 'tooltip')
-                .text(function(d){ return "Hire #"+ d._position + " of " + total })
-                .style("fill", "#333")
-
-
-            // ENTER + UPDATE
-            entries.selectAll("text.name")
+            // cards ENTER + UPDATE
+            cards.selectAll("text.name")
                 .text(function(d){ return d.full_name })
-            entries.selectAll("text.date")
+            cards.selectAll("text.date")
                 .text(function(d){ return Renderer.formatDate( Renderer.attribute(d) ) })
 
-            // UPDATE
+            cards.exit().transition()
+                .style("fill-opacity", 0)
+                .remove();
+
+            // entries UPDATE
             var entriesUpdate = entries.transition()
                 .duration(1000)
                 .attr("transform", function(d) { 
                     return "translate(" + x( Renderer.attribute(d) ) + "," + y(d.y) + ")";
                 })
 
-
-            // EXIT
+            // entries EXIT
             var entriesExit = entries.exit().transition()
                 .style("fill-opacity", 0)
                 .remove();
@@ -225,23 +196,16 @@ var BubbleChart = (function() {
 
         var _this = this;
 
-        // nodes
-        this.data.forEach(function(d) {
-            d.radius = 16;
-            d.x = Math.random() * 600;
-            d.y = Math.random() * 900;
-        });
-        this.data.sort(function(a, b) { return b.value - a.value; });
-
         this.canvas = Canvas.attr("width", this.width);
 
         // DATA
-        this.circles = this.canvas.selectAll("g").data(this.data, function(d) { return d.id });
+        this.data.sort(function(a, b) { return b.value - a.value; });
+        this.entries = this.canvas.selectAll("g.entry").data(this.data, function(d) { return d.id });
 
         // ENTER
-        var circlesEnter = this.circles.enter();
+        var entriesEnter = this.entries.enter();
 
-        var group = circlesEnter.append("svg:g")
+        var group = entriesEnter.append("svg:g")
                         .attr('class', function(d) { return "entry "+ (d.department ? d.department.toLowerCase() : 'none') })
         group.append('use')
             .attr('xlink:href', '#circle-rect')
@@ -254,32 +218,33 @@ var BubbleChart = (function() {
             .attr('clip-path', 'url(#circle-img)')
             .attr("xlink:href", function(d) { return d.mugshot_url })
 
-
         this.force = d3.layout.force()
             .nodes(this.data)
             .size([this.width, this.height])
+
+        BubbleChart.prototype.force = this.force;
     }
 
 
     BubbleChart.prototype.assemble = function() {
         var _this = this;
 
-        this.canvas.selectAll(".heading").remove();
-
-        _this.canvas.transition().duration(500)
+        _this.canvas.transition()
             .attr("height", this.height)
+            .attr("width", this.width)
 
         this.force
             .gravity(0)
-            .charge(this.charge).friction(0.9)
+            .charge(this.charge)
+            .friction(0.9)
             .on("tick", function(e) {
-                _this.circles.each(function(d) {
-                d.x = d.x + (_this.center.x - d.x) * (_this.damper + 0.02) * e.alpha;
-                d.y = d.y + (_this.center.y - d.y) * (_this.damper + 0.02) * e.alpha;
+                _this.entries.each(function(d) {
+                    d.x = d.x + (_this.center.x - d.x) * (_this.damper + 0.02) * e.alpha;
+                    d.y = d.y + (_this.center.y - d.y) * (_this.damper + 0.02) * e.alpha;
+                })
+                .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")" })
             })
-            .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")" })
-        })
-        .start()
+            .start()
     };
 
 
@@ -287,8 +252,6 @@ var BubbleChart = (function() {
     BubbleChart.prototype.disperse = function(key) {
         var _this = this;
         var keys = _.uniq(_.pluck(_this.data, key));
-
-
         var newHeight = keys.length*this.segmentWidth;
         var mid = this.segmentWidth/2;
 
@@ -313,15 +276,16 @@ var BubbleChart = (function() {
         for(a in clusterData) { data.push(clusterData[a]) }
 
         // UPDATE viewport
-        _this.canvas.transition().duration(1000)
+        _this.canvas.transition()
             .attr("height", newHeight)
+            .attr("width", _this.width);
 
         // DATA labels
         var nodes = _this.canvas.selectAll(".heading").data(data, function(d){ return d.name });
 
         // ENTER lables
         nodes.enter().append("text")
-            .attr("class", "heading")
+            .attr("class", "heading _clear")
             .attr("text-anchor", "start")
             .attr("x", this.center.x)
             .attr("y", this.center.y)
@@ -335,11 +299,12 @@ var BubbleChart = (function() {
             .attr("y", function(d) { return d.y })
 
         function tick(e) {
-            _this.circles.each(function(d) {
+            _this.entries.each(function(d) {
                 var point = clusterData[d[key]];
                 d.x = d.x + (point.x - d.x) * (_this.damper + 0.02) * e.alpha * 1.1;
                 d.y = d.y + (point.y - d.y) * (_this.damper + 0.02) * e.alpha * 1.1;
             })
+
             .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")" })
         }
 
@@ -358,7 +323,7 @@ var BubbleChart = (function() {
     };
 
     BubbleChart.prototype.charge = function(d) {
-        return -Math.pow(d.radius, 2.0) / 8;
+        return -Math.pow(16, 2.0) / 8;
     };
 
 
@@ -515,7 +480,7 @@ var App = {
                     .attr('xlink:href', "#circle-rect")
 
 
-            var chart = new BubbleChart(users, Canvas);
+            var chart = new BubbleChart(payload, Canvas);
             chart.assemble();
 
             var initTimeline = _.once(function() {
@@ -524,17 +489,20 @@ var App = {
 
             // Visualizations
             $("#graphs").find('button').click(function() {
-                var text = $(this).text();
+                // refresh the viewport
+                chart.force.stop();
+                Canvas.selectAll('._clear').remove();
 
-                if (text === 'People') {
+                var text = $(this).prop('class');
+                if (text === 'js-people') {
                     chart.assemble();
                 }
-                else if(text === 'Departments') {
+                else if(text === 'js-department') {
                   chart.disperse("department");
                 }
                 else {
                     initTimeline();
-                    Timeline.show(text);
+                    Timeline.show(text.substring(3));
                 }
             })
 
@@ -547,6 +515,7 @@ var App = {
                 .append(content)
                 .on('click', 'button', function(e) {
                     e.preventDefault();
+                    chart.force.stop();
                     var filter = $(this).text();
                     Timeline.filterBy('department', filter);
                 })
@@ -656,6 +625,5 @@ var App = {
         return dfd.promise();
     }
 }
-
 
 App.start();
