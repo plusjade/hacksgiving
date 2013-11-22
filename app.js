@@ -225,7 +225,7 @@ var BubbleChart = (function() {
         this.width = 1000;
         this.height = 600;
         this.padding = 100;
-        this.segmentWidth = 200;
+        this.segmentWidth = 170;
         this.center = {
           x: this.width / 2,
           y: this.height / 2
@@ -241,36 +241,35 @@ var BubbleChart = (function() {
 
         // nodes
         this.data.forEach(function(d) {
-            var node;
-            node = {
-            id: d.name + Math.random(),
-            radius: 16,
-            department: d.department,
-            x: Math.random() * 900,
-            y: Math.random() * 800
-            };
-            return _this.nodes.push(node);
+            d.radius = 16;
+            d.x = Math.random() * 600;
+            d.y = Math.random() * 900;
         });
-        this.nodes.sort(function(a, b) { return b.value - a.value; });
+        this.data.sort(function(a, b) { return b.value - a.value; });
 
 
-        this.canvas = Canvas.attr("height", this.height);
+        this.canvas = Canvas.attr("width", this.width);
 
         // DATA
-        this.circles = this.canvas.selectAll("circle").data(this.nodes, function(d) { return d.id });
+        this.circles = this.canvas.selectAll("circle").data(this.data, function(d) { return d.id });
 
         // ENTER
-        this.circles.enter()
-            .append("circle")
+        var circlesEnter = this.circles.enter();
+
+        var defs = circlesEnter.append("defs")
+        defs.append("filter")
+            .attr("id", function(d) { return "img-" + d.id })
+            .append("feImage")
+                .attr("xlink:href", function(d) { return d.mugshot_url })
+
+        circlesEnter.append("circle")
             .attr("r", 0)
+            .attr("filter", function(d){ return "url(#img-" + d.id + ')' })
             .attr("fill", function(d) {
                 return _this.fill_color(d.group);
             })
             .attr("stroke-width", 2).attr("stroke", function(d) {
                 return d3.rgb(_this.fill_color(d.group)).darker();
-            })
-            .attr("id", function(d) {
-                return "bubble_" + d.id;
             })
 
         // UPDATE
@@ -279,7 +278,7 @@ var BubbleChart = (function() {
             .attr("r", function(d) { return d.radius });
 
         this.force = d3.layout.force()
-            .nodes(this.nodes)
+            .nodes(this.data)
             .size([this.width, this.height])
     }
 
@@ -290,7 +289,7 @@ var BubbleChart = (function() {
         this.canvas.selectAll(".heading").remove();
 
         _this.canvas.transition().duration(500)
-            .attr("width", this.width)
+            .attr("height", this.height)
 
         this.force
             .gravity(0)
@@ -311,34 +310,56 @@ var BubbleChart = (function() {
     BubbleChart.prototype.disperse = function(key) {
         var _this = this;
         var keys = _.uniq(_.pluck(_this.data, key));
-        var newWidth = keys.length*this.segmentWidth;
+
+
+        var newHeight = keys.length*this.segmentWidth;
         var mid = this.segmentWidth/2;
 
-        // evenly distribute the cluster points
-        var cluster_points = {};
-        keys.forEach(function(value, i) {
-            cluster_points[value] = {
-                x: (_this.segmentWidth*i + mid),
-                y: _this.height/2
-            };
+        var clusterData = {};
+        // gather counts
+        _this.data.forEach(function(d) {
+            if (clusterData[d[key]]) {
+                clusterData[d[key]].count += 1;
+            }
+            else {
+                clusterData[d[key]] = { name: d[key], count: 1 };
+            }
         })
 
-        // UPDATE viewport
-        _this.canvas.transition().duration(500)
-            .attr("width", newWidth)
+        // evenly distribute cluster centers over the canvas area
+        keys.forEach(function(value, i) {
+            clusterData[value].x = _this.width/2;
+            clusterData[value].y = (_this.segmentWidth*i + mid);
+        })
 
-        // UPDATE labels
-        var nodes = _this.canvas.selectAll(".heading").data(keys);
+        var data = [];
+        for(a in clusterData) { data.push(clusterData[a]) }
+
+        // UPDATE viewport
+        _this.canvas.transition().duration(1000)
+            .attr("height", newHeight)
+
+        // DATA labels
+        var nodes = _this.canvas.selectAll(".heading").data(data, function(d){ return d.name });
+
+        // ENTER lables
         nodes.enter().append("text")
             .attr("class", "heading")
-            .attr("x", function(d) { return cluster_points[d].x })
-            .attr("y", 40)
-            .attr("text-anchor", "middle")
-            .text(function(d) { return d });
+            .attr("text-anchor", "start")
+            .attr("x", this.center.x)
+            .attr("y", this.center.y)
+            .style("fill-opacity", 0)
+            .text(function(d) { return d.name + ' (' + d.count + ')' });
+
+        // ENTER + UPDATE labels
+        nodes.transition().duration(1000)
+            .style("fill-opacity", 1)
+            .attr("x", 100)
+            .attr("y", function(d) { return d.y })
 
         function tick(e) {
             _this.circles.each(function(d) {
-                var point = cluster_points[d[key]];
+                var point = clusterData[d[key]];
                 d.x = d.x + (point.x - d.x) * (_this.damper + 0.02) * e.alpha * 1.1;
                 d.y = d.y + (point.y - d.y) * (_this.damper + 0.02) * e.alpha * 1.1;
             })
@@ -352,7 +373,7 @@ var BubbleChart = (function() {
         // This allows the circles to be properly positioned based on a coord calculations.
         // https://github.com/mbostock/d3/wiki/Force-Layout#wiki-gravity
         this.force
-            .size([newWidth, this.height])
+            .size([newHeight, this.height])
             .gravity(0)
             .charge(this.charge)
             .friction(0.9)
