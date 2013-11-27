@@ -59,7 +59,7 @@
     .padding {
       padding:10px;
     }
-    #graphs {
+    #graphs ul {
       margin:0;
       padding: 0;
       margin-bottom: 10px;
@@ -67,7 +67,7 @@
       border-bottom: 1px solid #E8A9B8;
       list-style: none;
     }
-    #graphs li {
+    #graphs ul li {
       line-height: 1.5em;
     }
 
@@ -229,17 +229,7 @@
       <aside>
         <div class="padding">
           <h2>Visualize:</h2>
-          <ul id="graphs">
-            <li><button class="js-people">All People</button></li>
-            <li><button class="js-department">By Department</button></li>
-            <li><button class="js-start-date">By Start-date</button></li>
-            <li><button class="js-birthday">By Birthday</button></li>
-          </ul>
-
-          <h2>Filter by Department:</h2>
-          <ul id="key">
-            <li><button>All</button></li>
-          </ul>
+          <div id="graphs"> </div>
         </div>
       </aside>
 

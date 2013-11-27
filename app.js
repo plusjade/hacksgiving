@@ -375,12 +375,6 @@ var Users = Backbone.Collection.extend({
     }
 
 })
-var Group = Backbone.Model.extend({
-
-})
-var Groups = Backbone.Collection.extend({
-    model: Group
-})
 
 var CurrentUserView = Backbone.View.extend({
     model : User
@@ -438,6 +432,49 @@ var GroupsView = Backbone.View.extend({
     }
 })
 
+
+
+var Graph = Backbone.Model.extend({});
+var Graphs = Backbone.Collection.extend({
+    model : Graph
+});
+var GraphView = Backbone.View.extend({
+    model : Graph
+    ,
+    template: "<li><button>By {{ attribute }}</button></li>"
+    ,
+    events : {
+        'click button' : 'update'
+    }
+    ,
+    render : function() {
+        return this.$el.html(Mustache.render(this.template, this.model.attributes));
+    }
+    ,
+    update : function(e) {
+        e.preventDefault();
+        this._update(this.model.get('attribute'), this.model.get('type') );
+    }
+})
+var GraphsView = Backbone.View.extend({
+    model : Graph
+    ,
+    collection : Graphs
+    ,
+    el : "#graphs"
+    ,
+    render : function() {
+        var cache = [];
+        this.collection.each(function(model) {
+            cache.push(new GraphView({ model: model }).render())
+        })
+        var $c = $("<ul>");
+        $.fn.append.apply($c, cache);
+
+        this.$el.html($c);
+    }
+})
+
 var App = {
 
     start : function() {
@@ -464,6 +501,7 @@ var App = {
 
         // list users
         App.users().done(function(users) {
+
             d3.select('#status').html('');
             Data.users = new Users(users);
             var payload = Data.users.timelinePayload();
@@ -485,47 +523,67 @@ var App = {
                 .append('use')
                     .attr('xlink:href', "#circle-rect")
 
-
             var chart = new BubbleChart(payload, Canvas);
-            chart.assemble();
 
             var initTimeline = _.once(function() {
                 Timeline.initialize(payload, Canvas);
             });
 
-            // Visualizations
-            $("#graphs").find('button').click(function() {
+            // FIXME: This is hacky =(
+            GraphView.prototype._update = function(attribute, type) {
                 // refresh the viewport
                 chart.force.stop();
                 Canvas.selectAll('._clear').remove();
 
-                var text = $(this).prop('class');
-                if (text === 'js-people') {
-                    chart.assemble();
+                switch (type) {
+                    case "start":
+                        chart.assemble();
+                        break;
+                    case "chart":
+                        chart.disperse(attribute);
+                        break;
+                    case "timeline":
+                        initTimeline();
+                        Timeline.show(attribute);
+                        break;
                 }
-                else if(text === 'js-department') {
-                  chart.disperse("department");
-                }
-                else {
-                    initTimeline();
-                    Timeline.show(text.substring(3));
-                }
-            })
+            }
 
-            // Filters (departments)
-            var departments = _.map(payload, function(d) { return d.department || 'none'; })
-            departments = _.uniq(departments);
-            var content = '';
-            _.each(departments, function(d){ content += '<li><button>'+d+'</button></li>'; })
-            $("#key")
-                .append(content)
-                .on('click', 'button', function(e) {
-                    e.preventDefault();
-                    chart.force.stop();
-                    var filter = $(this).text();
-                    Timeline.filterBy('department', filter);
-                })
+            var graphData = [
+                {
+                    "attribute" : "all",
+                    "type" : "start"
+                }
+                ,
+                {
+                    "attribute" : "department",
+                    "type" : "chart"
+                }
+                ,
+                { 
+                    "attribute" : "timezone",
+                    "type" : "chart"
+                }
+                ,
+                { 
+                    "attribute" : "location",
+                    "type" : "chart"
+                }
+                ,
+                { 
+                    "attribute" : "start-date",
+                    "type" : "timeline"
+                }
+                ,
+                { 
+                    "attribute" : "birthday",
+                    "type" : "timeline"
+                }
+            ];
+            var graphsView = new GraphsView({ collection: new Graphs(graphData) });
+            graphsView.render();
 
+            chart.assemble();
         });
     }
     ,
