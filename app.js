@@ -537,12 +537,12 @@ var App = {
 
     // Data Endpoints
     // -----------------
-    users : function() {
+    users : function(clearCache) {
         var cacheName = 'global.users',
             cache,
             dfd = $.Deferred();
 
-        if(cache = localStorage.getItem(cacheName)) {
+        if(!clearCache && (cache = localStorage.getItem(cacheName))) {
             console.log("cache hit");
             dfd.resolve(JSON.parse(cache));
         }
@@ -568,14 +568,13 @@ var App = {
     }
     ,
 
-    groups : function() {
+    groups : function(clearCache) {
         var self = this;
         var cacheName = 'global.groups',
             cache,
             dfd = $.Deferred();
 
-        if(cache = localStorage.getItem(cacheName)) {
-        //if(false) {
+        if(!clearCache && (cache = localStorage.getItem(cacheName))) {
             console.log("cache hit");
             var data = JSON.parse(cache);
             dfd.resolve(data);
