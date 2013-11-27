@@ -350,23 +350,18 @@ var Users = Backbone.Collection.extend({
     model: User
     ,
     timelinePayload : function() {
-        var data =  this.map(function(d) {
+        return this.map(function(d) {
             var month = (Math.floor(Math.random() * 12) + 1) + '';
             var day = (Math.floor(Math.random() * 28) + 1) + '';
             if(month.length === 1) month = "0" + month;
             if(day.length === 1) day = "0" + day;
 
-            return {
-                id: d.id,
-                date: d.get('activated_at').split(' ')[0],
-                full_name: d.get('full_name'),
-                department: d.get('department'),
-                mugshot_url: d.get('mugshot_url'),
-                birthday: (month + "/" + day),
-                web_url: d.get('web_url')
-            }
+            var node = d.attributes;
+            node.date = d.get('activated_at').split(' ')[0];
+            node.birthday = (month + "/" + day);
+
+            return node;
         })
-        return data;
     }
     ,
     validateData : function(d) {
