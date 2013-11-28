@@ -1,3 +1,101 @@
+var Data = {
+    users : function(clearCache) {
+        var cacheName = 'global.users',
+            cache,
+            dfd = $.Deferred();
+
+        if(!clearCache && (cache = localStorage.getItem(cacheName))) {
+            console.log("cache hit");
+            dfd.resolve(JSON.parse(cache));
+        }
+        else {
+            yam.request({
+                url: "https://www.yammer.com/api/v1/users.json",
+                method: "GET",
+                success: function (users) { //print message response information to the console
+                    console.log("request success");
+                    console.log("cache MISS");
+                    console.dir(users);
+                    localStorage.setItem(cacheName, JSON.stringify(users));
+
+                    dfd.resolve(users);
+                },
+                error: function (user) {
+                    alert("There was an error with the request.");
+                }
+            });
+        }
+
+        return dfd.promise();
+    }
+    ,
+    groups : function(clearCache) {
+        var self = this;
+        var cacheName = 'global.groups',
+            cache,
+            dfd = $.Deferred();
+
+        if(!clearCache && (cache = localStorage.getItem(cacheName))) {
+            console.log("cache hit");
+            var data = JSON.parse(cache);
+            dfd.resolve(data);
+        }
+        else {
+            yam.request({
+                url: "https://www.yammer.com/api/v1/groups.json",
+                method: "GET",
+                success: function (data) {
+                    console.log("groups request success");
+                    console.log("cache MISS");
+                    var i = 0;
+                    var times = data.length;
+                    var intervalID = setInterval(function(){
+                        var group = data[i];
+                        console.log(i++);
+
+                        if (i >= times) {
+                            console.log("exit");
+                            clearInterval(intervalID);
+                            self.group_users(group).done(function(){
+                                localStorage.setItem(cacheName, JSON.stringify(data));
+                                dfd.resolve(data);
+                            })
+                        }
+                        else {
+                            dfd.then( self.group_users(group) );
+                        }
+
+                    }, 1500, data);
+                },
+                error: function (data) {
+                    alert("There was an error with the request.");
+                }
+            });
+        }
+
+        return dfd.promise();
+    }
+    ,
+    group_users : function(group) {
+        var dfd = $.Deferred();
+            yam.request({
+                url: "https://www.yammer.com/api/v1/users/in_group/"+group.id+".json",
+                method: "GET",
+                success: function (data) {
+                    console.log('resolve: ' + group.id)
+                    group.users = data.users;
+                    dfd.resolve(data.users);
+                },
+                error: function (data) {
+                    console.log("There was an error with the request.");
+                }
+            });
+
+
+        return dfd.promise();
+    }
+}
+
 var Timeline = {
     // The payload represents the full dataset.
     // Views and filters will filter the global dataset.
@@ -342,10 +440,8 @@ var BubbleChart = (function() {
 
 })();
 
-var Data = {};
-var User = Backbone.Model.extend({
 
-})
+var User = Backbone.Model.extend({});
 var Users = Backbone.Collection.extend({
     model: User
     ,
@@ -476,7 +572,6 @@ var GraphsView = Backbone.View.extend({
 })
 
 var App = {
-
     start : function() {
         // apparently this function will wait on yam.connect so
         // will fire at any point the user uses the connect button.
@@ -495,16 +590,15 @@ var App = {
         });
     }
     ,
-
     render : function(session) {
         new CurrentUserView({ model: session.user });
 
         // list users
-        App.users().done(function(users) {
+        Data.users().done(function(users) {
 
             d3.select('#status').html('');
-            Data.users = new Users(users);
-            var payload = Data.users.timelinePayload();
+            var users = new Users(users);
+            var payload = users.timelinePayload();
 
             var Canvas = d3.select("#world").append("svg")
 
@@ -585,107 +679,6 @@ var App = {
 
             chart.assemble();
         });
-    }
-    ,
-
-    // Data Endpoints
-    // -----------------
-    users : function(clearCache) {
-        var cacheName = 'global.users',
-            cache,
-            dfd = $.Deferred();
-
-        if(!clearCache && (cache = localStorage.getItem(cacheName))) {
-            console.log("cache hit");
-            dfd.resolve(JSON.parse(cache));
-        }
-        else {
-            yam.request({
-                url: "https://www.yammer.com/api/v1/users.json",
-                method: "GET",
-                success: function (users) { //print message response information to the console
-                    console.log("request success");
-                    console.log("cache MISS");
-                    console.dir(users);
-                    localStorage.setItem(cacheName, JSON.stringify(users));
-
-                    dfd.resolve(users);
-                },
-                error: function (user) {
-                    alert("There was an error with the request.");
-                }
-            });
-        }
-
-        return dfd.promise();
-    }
-    ,
-
-    groups : function(clearCache) {
-        var self = this;
-        var cacheName = 'global.groups',
-            cache,
-            dfd = $.Deferred();
-
-        if(!clearCache && (cache = localStorage.getItem(cacheName))) {
-            console.log("cache hit");
-            var data = JSON.parse(cache);
-            dfd.resolve(data);
-        }
-        else {
-            yam.request({
-                url: "https://www.yammer.com/api/v1/groups.json",
-                method: "GET",
-                success: function (data) {
-                    console.log("groups request success");
-                    console.log("cache MISS");
-                    var i = 0;
-                    var times = data.length;
-                    var intervalID = setInterval(function(){
-                        var group = data[i];
-                        console.log(i++);
-
-                        if (i >= times) {
-                            console.log("exit");
-                            clearInterval(intervalID);
-                            self.group_users(group).done(function(){
-                                localStorage.setItem(cacheName, JSON.stringify(data));
-                                dfd.resolve(data);
-                            })
-                        }
-                        else {
-                            dfd.then( self.group_users(group) );
-                        }
-
-                    }, 1500, data);
-                },
-                error: function (data) {
-                    alert("There was an error with the request.");
-                }
-            });
-        }
-
-        return dfd.promise();
-    }
-    ,
-
-    group_users : function(group) {
-        var dfd = $.Deferred();
-            yam.request({
-                url: "https://www.yammer.com/api/v1/users/in_group/"+group.id+".json",
-                method: "GET",
-                success: function (data) {
-                    console.log('resolve: ' + group.id)
-                    group.users = data.users;
-                    dfd.resolve(data.users);
-                },
-                error: function (data) {
-                    console.log("There was an error with the request.");
-                }
-            });
-
-
-        return dfd.promise();
     }
 }
 
